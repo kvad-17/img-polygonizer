@@ -25,7 +25,7 @@ MainWindow::MainWindow(QWidget *parent) :
 {
     ui->setupUi(this);
 
-    xy = QImage(256,256,QImage::Format_RGB32);
+    xy = QImage(257,257,QImage::Format_RGB32);
     xy.fill(QColor("white"));
     connect(ui->label_xy, SIGNAL(xyLabel_clicked(xyLabel*, QMouseEvent*)),
             this, SLOT(on_xy_mousePress(xyLabel*,QMouseEvent*)));
@@ -181,7 +181,7 @@ void MainWindow::on_pushButton_drawPolyClean_2_clicked()
 
 void MainWindow::on_pushButton_polySplit_clicked()
 {
-    QVector<QImage> imgv (256, QImage(256,256,QImage::Format_RGB32));
+    QVector<QImage> imgv (257, QImage(257,257,QImage::Format_RGB32));
     double AX = ui->lineEdit_polyAX->text().toDouble(),
            BX = ui->lineEdit_polyBX->text().toDouble(),
            CX = ui->lineEdit_polyCX->text().toDouble(),
@@ -191,8 +191,8 @@ void MainWindow::on_pushButton_polySplit_clicked()
            CY = ui->lineEdit_polyCY->text().toDouble(),
            DY = ui->lineEdit_polyDY->text().toDouble();
 
-    ui->progressBar->setMaximum(255);
-    for(int depth = 0; depth < 256; depth++)
+    ui->progressBar->setMaximum(256);
+    for(int depth = 0; depth <= 256; depth++)
     {
         ui->progressBar->setValue(depth);
 
@@ -204,15 +204,16 @@ void MainWindow::on_pushButton_polySplit_clicked()
         P->split_img(depth, img);
         Q->split_img(depth, img);
 
+        qDebug() << "s";
         imgv[depth].fill(QColor("white"));
-        P->print(imgv[depth], -1);
-        Q->print(imgv[depth], -1);
+        qDebug() << "f";
+
+        P->print(imgv[depth], -1);qDebug() << "1";
+        Q->print(imgv[depth], -1);qDebug() << "2";
         delete P; delete Q;
     }
-
-    ui->horizontalSlider->setValue(127);
-    ui->label_xy->setPixmap(QPixmap::fromImage(imgv[127]));
     imvec = imgv;
+    ui->horizontalSlider->setValue(128);
 }
 
 void MainWindow::on_horizontalSlider_valueChanged(int value)
