@@ -35,27 +35,10 @@ MainWindow::~MainWindow()
 {
     delete ui;
 }
-void MainWindow::drawPoint(int x, int y)
-{
-    painter.drawPoint(x,y);
-}
 
 void MainWindow::refresh_bmp()
 {
     ui->bmpLabel->setPixmap(QPixmap::fromImage(img));
-}
-
-void MainWindow::on_pushButton_clicked()
-{
-    static bool flag = true;
-    QImage b (0,0);
-    ui->bmpLabel->setScaledContents(true);
-    if(flag)
-    {ui->bmpLabel->setPixmap(QPixmap::fromImage(img)); flag = false;}
-    else
-    {ui->bmpLabel->setPixmap(QPixmap::fromImage(b)); flag = true;}
-    //"D:\\w10profile\\Desktop\\d053950f15f07d715d16ccbb432b625f.png");
-            //setPixmap(QPixmap::load
 }
 
 void MainWindow::on_pushButton_load_clicked()
@@ -100,88 +83,14 @@ void MainWindow::on_pushButton_load_clicked()
     refresh_bmp();
 }
 
-void MainWindow::on_pushButton_process_clicked()
-{
-    QRgb t;
-    for(int x = 0; x < 256; x++)
-       for(int y = 0; y < 256; y++)
-       {
-           t = img.pixel(x, y);
-           if(qRed(t) <128)
-               img.setPixel(x,y, 257);
-
-           else img.setPixel(x,y, 0);
-
-       }
-    refresh_bmp();
-}
-
-
-
-void MainWindow::on_pushButton_getpixel_clicked()
-{
-    QRgb t = img.pixel(ui->lineEdit_pixelX->text().toInt(), ui->lineEdit_pixelY->text().toInt());
-    int i = img.pixelIndex(ui->lineEdit_pixelX->text().toInt(), ui->lineEdit_pixelY->text().toInt());
-    ui->label_pixelout->setText(QString::number(t,16).prepend("0x"));
-    ui->label_blue->setText(QString::number(qBlue(t)));
-    ui->label_red->setText(QString::number(qRed(t)));
-    ui->label_green->setText(QString::number(qGreen(t)));
-     ui->label_index->setText(QString::number(i));
-}
-
-void MainWindow::on_pushButton_checkgray_clicked()
-{
-    QRgb t;
-    for(int x = 0; x < 256; x++)
-       for(int y = 0; y < 256; y++)
-       {
-           t = img.pixel(x, y);
-           img.pixel(x, y);
-           img.setPixel(x,y, QColor(255-qRed(t),255-qGreen(t),255-qBlue(t)).rgba64());
-//           if(qRed(t) == qBlue(t) && qBlue(t) == qGreen(t))
-
-
-//           else img.setPixel(x,y, QColor(0,0,0).rgba64());
-
-       }
-    refresh_bmp();
-}
-
-void MainWindow::on_pushButton_format_clicked()
-{
-    QMessageBox::warning(this, "","Формат: " + QString::number(img.format()));
-}
-
-
-void MainWindow::on_pushButton_drawPoly_clicked()
-{
-    poly P(ui->lineEdit_drawAX->text().toDouble(), ui->lineEdit_drawAY->text().toDouble(),
-           ui->lineEdit_drawBX->text().toDouble(), ui->lineEdit_drawBY->text().toDouble(),
-           ui->lineEdit_drawCX->text().toDouble(), ui->lineEdit_drawCY->text().toDouble()
-           );
-    qDebug() << "HAHA";
-    P.split(ui->lineEdit_drawDepth->text().toInt());
-    P.print(xy, ui->lineEdit_drawDepth->text().toInt());
-    ui->label_xy->setPixmap(QPixmap::fromImage(xy));
-}
-
 void MainWindow::on_pushButton_drawPolyClean_clicked()
 {
     xy.fill(QColor("white"));
     ui->label_xy->setPixmap(QPixmap::fromImage(xy));
 }
 
-void MainWindow::on_pushButton_drawPolyClean_2_clicked()
-{
-    xy.fill(QColor("white"));
-    ui->label_xy->setPixmap(QPixmap::fromImage(xy));
-}
-
-
-
 void MainWindow::on_pushButton_polySplit_clicked()
 {
-    QVector<QImage> imgv (257, QImage(257,257,QImage::Format_RGB32));
     double AX = ui->lineEdit_polyAX->text().toDouble(),
            BX = ui->lineEdit_polyBX->text().toDouble(),
            CX = ui->lineEdit_polyCX->text().toDouble(),
@@ -191,38 +100,106 @@ void MainWindow::on_pushButton_polySplit_clicked()
            CY = ui->lineEdit_polyCY->text().toDouble(),
            DY = ui->lineEdit_polyDY->text().toDouble();
 
+    bool triangle =  (ui->lineEdit_polyDX->text() == "-")||
+                     (ui->lineEdit_polyDY->text() == "-");
+
+    QVector<QImage> imgv (257, QImage(257,257,QImage::Format_RGB32));
+    QVector<poly> polv (257, triangle?poly(AX,AY,BX,BY,CX,CY):poly(AX,AY,BX,BY,CX,CY,DX,DY));
+
     ui->progressBar->setMaximum(256);
     for(int depth = 0; depth <= 256; depth++)
     {
         ui->progressBar->setValue(depth);
-
-        QApplication::processEvents();
-
-        poly *P = new poly(AX,AY,BX,BY,CX,CY);
-        poly *Q = new poly(BX,BY,CX,CY,DX,DY);
-
-        P->split_img(depth, img);
-        Q->split_img(depth, img);
-
-        qDebug() << "s";
+        polv[depth].split_img(depth, img);
         imgv[depth].fill(QColor("white"));
-        qDebug() << "f";
-
-        P->print(imgv[depth], -1);qDebug() << "1";
-        Q->print(imgv[depth], -1);qDebug() << "2";
-        delete P; delete Q;
+        polv[depth].print(imgv[depth], -1);
     }
-    imvec = imgv;
+    imgvec = imgv;
+    polvec = polv;
     ui->horizontalSlider->setValue(128);
 }
 
 void MainWindow::on_horizontalSlider_valueChanged(int value)
 {
     ui->label_progress->setText(QString::number(value));
-    ui->label_xy->setPixmap(QPixmap::fromImage(imvec[value]));
+    ui->label_xy->setPixmap(QPixmap::fromImage(imgvec[value]));
 }
 
 void MainWindow::on_xy_mousePress(xyLabel *clicked, QMouseEvent *event)
 {
     qDebug() << event->x() << ' ' << event->y();
 }
+
+void MainWindow::on_pushButton_drawPolyABCD_clicked()
+{
+    double AX = ui->lineEdit_polyAX->text().toDouble(),
+           BX = ui->lineEdit_polyBX->text().toDouble(),
+           CX = ui->lineEdit_polyCX->text().toDouble(),
+           DX = ui->lineEdit_polyDX->text().toDouble(),
+           AY = ui->lineEdit_polyAY->text().toDouble(),
+           BY = ui->lineEdit_polyBY->text().toDouble(),
+           CY = ui->lineEdit_polyCY->text().toDouble(),
+           DY = ui->lineEdit_polyDY->text().toDouble();
+    poly a(AX,AY,BX,BY,CX,CY,DX,DY);
+    a.split(ui->lineEdit_drawPolyABCDdepth->text().toInt());
+    a.print(xy, -1);
+     ui->label_xy->setPixmap(QPixmap::fromImage(xy));
+}
+
+void MainWindow::on_pushButton_polySplitOnce_clicked()
+{
+    QImage i(257,257,QImage::Format_RGB32);
+    i.fill(QColor("white"));
+    double AX = ui->lineEdit_polyAX->text().toDouble(),
+           BX = ui->lineEdit_polyBX->text().toDouble(),
+           CX = ui->lineEdit_polyCX->text().toDouble(),
+           DX = ui->lineEdit_polyDX->text().toDouble(),
+           AY = ui->lineEdit_polyAY->text().toDouble(),
+           BY = ui->lineEdit_polyBY->text().toDouble(),
+           CY = ui->lineEdit_polyCY->text().toDouble(),
+           DY = ui->lineEdit_polyDY->text().toDouble();
+    int depth = ui->lineEdit_polyDepth->text().toInt();
+    poly a(AX,AY,BX,BY,CX,CY,DX,DY);
+
+    a.split_img(depth, img);
+    a.print(i, -1);
+
+    ui->label_xy->setPixmap(QPixmap::fromImage(i));
+}
+
+void MainWindow::on_pushButton_polySplitPreset0_clicked()
+{
+    ui->lineEdit_polyAX->setText("0");
+    ui->lineEdit_polyBX->setText("256");
+    ui->lineEdit_polyCX->setText("0");
+    ui->lineEdit_polyDX->setText("256");
+    ui->lineEdit_polyAY->setText("0");
+    ui->lineEdit_polyBY->setText("0");
+    ui->lineEdit_polyCY->setText("256");
+    ui->lineEdit_polyDY->setText("256");
+}
+
+void MainWindow::on_pushButton_polySplitPreset1_clicked()
+{
+    ui->lineEdit_polyAX->setText("96");
+    ui->lineEdit_polyBX->setText("210");
+    ui->lineEdit_polyCX->setText("40");
+    ui->lineEdit_polyDX->setText("160");
+    ui->lineEdit_polyAY->setText("96");
+    ui->lineEdit_polyBY->setText("64");
+    ui->lineEdit_polyCY->setText("192");
+    ui->lineEdit_polyDY->setText("160");
+}
+
+void MainWindow::on_pushButton_polySplitPreset2_clicked()
+{
+    ui->lineEdit_polyAX->setText("0");
+    ui->lineEdit_polyBX->setText("256");
+    ui->lineEdit_polyCX->setText("0");
+    ui->lineEdit_polyDX->setText("256");
+    ui->lineEdit_polyAY->setText("0");
+    ui->lineEdit_polyBY->setText("0");
+    ui->lineEdit_polyCY->setText("256");
+    ui->lineEdit_polyDY->setText("256");
+}
+
