@@ -2,6 +2,7 @@
 #include "ui_mainwindow.h"
 #include "poly.cpp"
 #include <QMouseEvent>
+#include <QVector>
 
 xyLabel::xyLabel( QWidget * parent ):QLabel(parent) {}
 
@@ -11,13 +12,6 @@ void xyLabel::mousePressEvent ( QMouseEvent * event )
     emit xyLabel_clicked(this, event);
 }
 
-//void MainWindow::drawPoly(int x, int y)
-//{
-//    qDebug() << x << ' ' << y;
-//    int depth = ui->horizontalSlider->value();
-//    poly sample =
-    
-//}
 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
@@ -109,10 +103,10 @@ void MainWindow::on_pushButton_polySplit_clicked()
     ui->progressBar->setMaximum(256);
     for(int depth = 0; depth <= 256; depth++)
     {
-        ui->progressBar->setValue(depth);
-        polv[depth].split_img(depth, img);
-        imgv[depth].fill(QColor("white"));
-        polv[depth].print(imgv[depth], -1);
+        ui->progressBar->setValue(depth);   QApplication::processEvents();
+        polv[depth].split_img(depth, img);  QApplication::processEvents();
+        imgv[depth].fill(QColor("white"));  QApplication::processEvents();
+        polv[depth].print(imgv[depth]); QApplication::processEvents();
     }
     imgvec = imgv;
     polvec = polv;
@@ -127,7 +121,11 @@ void MainWindow::on_horizontalSlider_valueChanged(int value)
 
 void MainWindow::on_xy_mousePress(xyLabel *clicked, QMouseEvent *event)
 {
-    qDebug() << event->x() << ' ' << event->y();
+    poly x = polvec[ui->horizontalSlider->value()].getLowestPolyOnPix(pix(event->x(), event->y()));
+    QImage i(257,257, QImage::Format_RGB32);
+    i.fill(QColor("white"));
+    x.print(i, -1);
+    ui->outLabel->setPixmap(QPixmap::fromImage(i));
 }
 
 void MainWindow::on_pushButton_drawPolyABCD_clicked()
@@ -142,7 +140,7 @@ void MainWindow::on_pushButton_drawPolyABCD_clicked()
            DY = ui->lineEdit_polyDY->text().toDouble();
     poly a(AX,AY,BX,BY,CX,CY,DX,DY);
     a.split(ui->lineEdit_drawPolyABCDdepth->text().toInt());
-    a.print(xy, -1);
+    a.print(xy);
      ui->label_xy->setPixmap(QPixmap::fromImage(xy));
 }
 
@@ -162,7 +160,7 @@ void MainWindow::on_pushButton_polySplitOnce_clicked()
     poly a(AX,AY,BX,BY,CX,CY,DX,DY);
 
     a.split_img(depth, img);
-    a.print(i, -1);
+    a.print(i);
 
     ui->label_xy->setPixmap(QPixmap::fromImage(i));
 }
@@ -203,3 +201,37 @@ void MainWindow::on_pushButton_polySplitPreset2_clicked()
     ui->lineEdit_polyDY->setText("256");
 }
 
+
+void MainWindow::on_pushButton_checkall_clicked()
+{
+    QImage i(257,257, QImage::Format_RGB32);
+    i.fill(QColor("white"));
+
+    for(int t = 0; t < 256; t++)
+        for(int m = 0, n = t; m <= t; m++, n--)
+        {
+            poly x = polvec[ui->horizontalSlider->value()].getLowestPolyOnPix(pix(m, n));
+            x.print(i);
+            x = polvec[ui->horizontalSlider->value()].getLowestPolyOnPix(pix(255-m, 255-n));
+            x.print(i);
+            ui->outLabel->setPixmap(QPixmap::fromImage(i));
+            QApplication::processEvents();
+        }
+
+
+    ui->outLabel->setPixmap(QPixmap::fromImage(i));
+}
+
+void MainWindow::on_pushButton_stackprint_clicked()
+{
+    QImage i(257,257, QImage::Format_RGB32);
+    i.fill(QColor("white"));
+
+    QVector<poly*> vp = polvec[ui->horizontalSlider->value()].getLowestPolyVec();
+    foreach(poly *p, vp)
+    {
+        p->print(i, true);
+        ui->outLabel_stack->setPixmap(QPixmap::fromImage(i));
+        QApplication::processEvents();
+    }
+}

@@ -1,6 +1,8 @@
 #include <mainwindow.h>
 #include <QDebug>
 #include <QtGlobal>
+#include <QStack>
+#include <QVector>
 
 double sideval(double ax, double ay,
                double bx, double by,
@@ -11,12 +13,13 @@ double sideval(double ax, double ay,
 
 poly::poly()
 {
-    ax = ay = bx = by = cx = cy = 0;
+    gray = ax = ay = bx = by = cx = cy = 0;
     is_rectangle = is_splitted = false;
 }
 
 poly::poly(const poly &x)
 {
+    gray = x.gray;
     ax = x.ax;
     ay = x.ay;
     bx = x.bx;
@@ -55,6 +58,7 @@ void poly::set(double _ax, double _ay,
     cx = _cx;
     cy = _cy;
     is_splitted = is_rectangle = false;
+    gray = 0;
 }
 poly::poly(double _ax, double _ay,
            double _bx, double _by,
@@ -73,40 +77,62 @@ poly::poly(double _ax, double _ay,
     Q = new poly(_bx, _by, _cx, _cy, _dx, _dy); //BCD
 }
 
-void poly::print(QImage &img, int n)
+void poly::print(QImage &img, bool fill = false, int n = -1)
 {
     QPainter painter(&img);
+    if(fill)
+    {
+        painter.setBrush(QBrush(QColor(gray,gray,gray)));
+        painter.setPen(Qt::NoPen);
+    }
     if(is_rectangle)        //  AB
     {                       //  CD
-        painter.drawLine(P->ax,P->ay,P->bx,P->by);//AB
-        painter.drawLine(Q->ax,Q->ay,Q->cx,Q->cy);//BD
-        painter.drawLine(Q->cx,Q->cy,Q->bx,Q->by);//DC
-        painter.drawLine(P->cx,P->cy,P->ax,P->ay);//CA
+        QPolygon p;
+        p << QPoint(P->ax,P->ay) << QPoint(P->bx,P->by) << QPoint(Q->cx,Q->cy) << QPoint(Q->bx,Q->by);
+        painter.drawPolygon(p);
     }
     else
     {
-        painter.drawLine(ax,ay,bx,by);//AB
-        painter.drawLine(ax,ay,cx,cy);//AC
-        painter.drawLine(bx,by,cx,cy);//BC
+        QPolygon p;
+        p << QPoint(ax,ay) << QPoint(bx,by) << QPoint(cx,cy);
+        painter.drawPolygon(p);
     }
     painter.end();
-    if(n && is_splitted) {P->print(img, n-1); Q->print(img, n-1);}
+    if(n && is_splitted) {P->print(img, fill, n-1); Q->print(img, fill, n-1);}
 }
-bool poly::is_inside(double x, double y)
+
+#define mgx 0.46756456
+#define mgy 0.53224456
+
+pix::pix(int _x, int _y){
+    dx = _x + mgx;
+    dy = _y + mgy;
+}
+
+int pix::x()
+{
+    return round(dx-mgx);
+}
+int pix::y()
+{
+    return round(dy-mgy);
+}
+
+bool poly::has_inside(pix p)
 {
     double sab, sbc, scd, sda;
     if(is_rectangle)
     {
-        sab = sideval(P->ax,P->ay,P->bx,P->by, x, y);//AB
-        sbc = sideval(Q->ax,Q->ay,Q->cx,Q->cy, x, y);//BD
-        scd = sideval(Q->cx,Q->cy,Q->bx,Q->by, x, y);//DC
-        sda = sideval(P->cx,P->cy,P->ax,P->ay, x, y);//CA
+        sab = sideval(P->ax,P->ay,P->bx,P->by, p.dx, p.dy);//AB
+        sbc = sideval(Q->ax,Q->ay,Q->cx,Q->cy, p.dx, p.dy);//BD
+        scd = sideval(Q->cx,Q->cy,Q->bx,Q->by, p.dx, p.dy);//DC
+        sda = sideval(P->cx,P->cy,P->ax,P->ay, p.dx, p.dy);//CA
     }
     else
     {
-        sab = sideval(ax, ay, bx, by, x, y);
-        sbc = sideval(bx, by, cx, cy, x, y);
-        scd = sideval(cx, cy, ax, ay, x, y);
+        sab = sideval(ax, ay, bx, by, p.dx, p.dy);
+        sbc = sideval(bx, by, cx, cy, p.dx, p.dy);
+        scd = sideval(cx, cy, ax, ay, p.dx, p.dy);
         sda = scd;
     }
 
@@ -164,18 +190,20 @@ void poly::split_img(int lim, QImage &img)
         maxY =  ceil(qMax(ay, qMax(by, cy)));
     }
 
-    int c = 0, g, g_max = 0, g_min = 255;
-    double mgx = 0.46756456, mgy = 0.53224456;
+    int sum = 0, c = 0, g, g_max = 0, g_min = 255;
+
 
     for(int x = minX; x < maxX; x++)
         for(int y = minY; y < maxY; y++)
-            if (is_inside(x+mgx, y+mgy))
+            if (has_inside(pix(x,y)))
             {
-                c++;
                 g = qGray(img.pixel(x, y));
+                c++; sum+= g;
                 if (g > g_max) g_max = g;
                 if (g < g_min) g_min = g;
             }
+
+    gray = sum/c;
 
     if(g_max-g_min >= lim)
     {
@@ -189,10 +217,43 @@ void poly::split_img(int lim, QImage &img)
     }//qDebug() << "split_img end";
 }
 
-//poly getPoly(double x, double y, poly& parent)
-//    {
-//        if(parent.not_empty())
-//        {
-        
-//        }else return poly();
-//    }
+poly poly::getLowestPolyOnPix(pix px)
+{
+    poly *p;
+    if(this->has_inside(px))
+    {
+        p = this;
+        while(p->is_splitted)
+        {
+           if(p->P->has_inside(px))
+               p = p->P;
+           else if(p->Q->has_inside(px))
+               p = p->Q;
+           else
+           {
+               qDebug() << "lost px at " << px.x() << ":" << px.y();
+               return poly();
+           }
+        }
+        return *p;
+
+    }else return poly();
+}
+
+QVector<poly*> poly::getLowestPolyVec()
+{
+    QStack<poly*> s;
+    QVector<poly*> v;
+    poly *t;
+    s.push(this);
+    while(!s.empty())
+    {
+        t = s.pop();
+        if(t->is_splitted)
+        {
+            s.push(t->P);
+            s.push(t->Q);
+        }else v.append(t);
+    }
+    return v;
+}

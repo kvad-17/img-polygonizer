@@ -45,6 +45,10 @@ private slots:
 
     void on_pushButton_polySplitPreset2_clicked();
 
+    void on_pushButton_checkall_clicked();
+
+    void on_pushButton_stackprint_clicked();
+
 private:
     Ui::MainWindow *ui;
     QImage img;

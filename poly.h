@@ -5,10 +5,18 @@
 #include <QDebug>
 #include <QtGlobal>
 
+struct pix{
+    double dx;
+    double dy;
+    pix(int _x, int _y);
+    int x();
+    int y();
+};
 
 class poly
 {
 private:
+    uchar gray;
     double ax, ay, bx, by, cx, cy;
     bool is_splitted;
     bool is_rectangle;
@@ -28,15 +36,15 @@ public:
     //coords setter
     void set(double _ax, double _ay, double _bx, double _by, double _cx, double _cy);
 
-    void print(QImage &img, int n);
+    void print(QImage &img, bool fill, int n);
 
-    bool is_inside(double x, double y);
+    bool has_inside(pix p);
 
 
     void split_img(int lim, QImage &img);
 
-    poly getPoly(double x, double y);
-
+    poly getLowestPolyOnPix(pix px);
+    QVector<poly*> getLowestPolyVec();
     void split(int n);
 };
 
