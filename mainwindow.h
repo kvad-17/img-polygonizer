@@ -9,6 +9,7 @@
 #include <QPainter>
 
 #include "poly.h"
+#include "poly_compress.h"
 #include "xylabel.h"
 
 namespace Ui {
@@ -49,6 +50,14 @@ private slots:
 
     void on_pushButton_stackprint_clicked();
 
+    void on_pushButton_compress_clicked();
+
+    void on_pushButton_compress_print_clicked();
+
+    void on_pushButton_compress_show_clicked();
+
+    void on_checkBox_gridonly_toggled(bool checked);
+
 private:
     Ui::MainWindow *ui;
     QImage img;
@@ -58,9 +67,15 @@ private:
     QImage img_spoly;
     
     QVector<QImage> imgvec;
+    QVector<QImage> imgcvec;
+
     QVector<poly> polvec;
 
     QImage xy;
+
+    poly poly_depth;
+
+    poly_compress PC;
 
     void refresh_bmp();
 

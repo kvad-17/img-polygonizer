@@ -85,6 +85,7 @@ void poly::print(QImage &img, bool fill = false, int n = -1)
         painter.setBrush(QBrush(QColor(gray,gray,gray)));
         painter.setPen(Qt::NoPen);
     }
+    if(is_rectangle || !is_splitted)
     if(is_rectangle)        //  AB
     {                       //  CD
         QPolygon p;

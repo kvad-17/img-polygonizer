@@ -98,6 +98,7 @@ void MainWindow::on_pushButton_polySplit_clicked()
                      (ui->lineEdit_polyDY->text() == "-");
 
     QVector<QImage> imgv (257, QImage(257,257,QImage::Format_RGB32));
+    QVector<QImage> imgcv (257, QImage(257,257,QImage::Format_RGB32));
     QVector<poly> polv (257, triangle?poly(AX,AY,BX,BY,CX,CY):poly(AX,AY,BX,BY,CX,CY,DX,DY));
 
     ui->progressBar->setMaximum(256);
@@ -105,10 +106,13 @@ void MainWindow::on_pushButton_polySplit_clicked()
     {
         ui->progressBar->setValue(depth);   QApplication::processEvents();
         polv[depth].split_img(depth, img);  QApplication::processEvents();
+        imgcv[depth].fill(QColor("white"));  QApplication::processEvents();
         imgv[depth].fill(QColor("white"));  QApplication::processEvents();
         polv[depth].print(imgv[depth]); QApplication::processEvents();
+        polv[depth].print(imgcv[depth], true); QApplication::processEvents();
     }
     imgvec = imgv;
+    imgcvec = imgcv;
     polvec = polv;
     ui->horizontalSlider->setValue(128);
 }
@@ -116,7 +120,8 @@ void MainWindow::on_pushButton_polySplit_clicked()
 void MainWindow::on_horizontalSlider_valueChanged(int value)
 {
     ui->label_progress->setText(QString::number(value));
-    ui->label_xy->setPixmap(QPixmap::fromImage(imgvec[value]));
+    ui->label_xy->setPixmap(QPixmap::fromImage(
+           ui->checkBox_gridonly->checkState()?imgvec[value]:imgcvec[value]));
 }
 
 void MainWindow::on_xy_mousePress(xyLabel *clicked, QMouseEvent *event)
@@ -124,7 +129,7 @@ void MainWindow::on_xy_mousePress(xyLabel *clicked, QMouseEvent *event)
     poly x = polvec[ui->horizontalSlider->value()].getLowestPolyOnPix(pix(event->x(), event->y()));
     QImage i(257,257, QImage::Format_RGB32);
     i.fill(QColor("white"));
-    x.print(i, -1);
+    x.print(i, true);
     ui->outLabel->setPixmap(QPixmap::fromImage(i));
 }
 
@@ -158,9 +163,10 @@ void MainWindow::on_pushButton_polySplitOnce_clicked()
            DY = ui->lineEdit_polyDY->text().toDouble();
     int depth = ui->lineEdit_polyDepth->text().toInt();
     poly a(AX,AY,BX,BY,CX,CY,DX,DY);
-
-    a.split_img(depth, img);
-    a.print(i);
+    poly_depth = a;
+    poly_depth.split_img(depth, img);
+    poly_depth.print(i);
+    PC = poly_compress(poly_depth);
 
     ui->label_xy->setPixmap(QPixmap::fromImage(i));
 }
@@ -234,4 +240,29 @@ void MainWindow::on_pushButton_stackprint_clicked()
         ui->outLabel_stack->setPixmap(QPixmap::fromImage(i));
         QApplication::processEvents();
     }
+}
+
+void MainWindow::on_pushButton_compress_clicked()
+{
+   // PC = ;
+}
+
+void MainWindow::on_pushButton_compress_print_clicked()
+{
+    PC.print();
+}
+
+void MainWindow::on_pushButton_compress_show_clicked()
+{
+    QImage i(257,257, QImage::Format_RGB32);
+    i.fill(QColor("white"));
+    PC.decompress()->print(i, true);
+    ui->label_xy->setPixmap(QPixmap::fromImage(i));
+}
+
+void MainWindow::on_checkBox_gridonly_toggled(bool checked)
+{
+    int sv = ui->horizontalSlider->value();
+    ui->label_xy->setPixmap(QPixmap::fromImage(
+           checked?imgvec[sv]:imgcvec[sv]));
 }

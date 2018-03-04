@@ -1,7 +1,6 @@
 #ifndef POLY_H
 #define POLY_H
 
-#include <mainwindow.h>
 #include <QDebug>
 #include <QtGlobal>
 
@@ -15,6 +14,7 @@ struct pix{
 
 class poly
 {
+    friend class poly_compress;
 private:
     uchar gray;
     double ax, ay, bx, by, cx, cy;
