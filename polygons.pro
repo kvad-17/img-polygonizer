@@ -25,12 +25,13 @@ DEFINES += QT_DEPRECATED_WARNINGS
 
 SOURCES += main.cpp\
         mainwindow.cpp \
-    poly.cpp \
-    poly_copmress.cpp
+        poly.cpp \
+        poly_container.cpp
 
 HEADERS  += mainwindow.h \
     xylabel.h \
     poly.h \
-    poly_compress.h
+    stashcode.h \
+    poly_container.h
 
 FORMS    += mainwindow.ui

@@ -14,7 +14,8 @@ struct pix{
 
 class poly
 {
-    friend class poly_compress;
+    friend class poly_container;
+    friend class MainWindow;
 private:
     uchar gray;
     double ax, ay, bx, by, cx, cy;
@@ -24,6 +25,7 @@ private:
 public:
     poly();
     poly(const poly&);
+    void operator = (const poly&);
     ~poly();
     bool not_empty();
 
@@ -36,12 +38,12 @@ public:
     //coords setter
     void set(double _ax, double _ay, double _bx, double _by, double _cx, double _cy);
 
-    void print(QImage &img, bool fill, int n);
+    void print(QImage &img, bool fill=false, int n=-1);
 
     bool has_inside(pix p);
 
 
-    void split_img(int lim, QImage &img);
+    void split_img(int lim, const QImage &img);
 
     poly getLowestPolyOnPix(pix px);
     QVector<poly*> getLowestPolyVec();

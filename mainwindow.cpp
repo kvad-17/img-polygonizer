@@ -1,8 +1,10 @@
-#include "mainwindow.h"
-#include "ui_mainwindow.h"
-#include "poly.cpp"
 #include <QMouseEvent>
 #include <QVector>
+#include "mainwindow.h"
+#include "poly.h"
+#include "mainwindow.h"
+#include "ui_mainwindow.h"
+
 
 xyLabel::xyLabel( QWidget * parent ):QLabel(parent) {}
 
@@ -21,8 +23,9 @@ MainWindow::MainWindow(QWidget *parent) :
 
     xy = QImage(257,257,QImage::Format_RGB32);
     xy.fill(QColor("white"));
-    connect(ui->label_xy, SIGNAL(xyLabel_clicked(xyLabel*, QMouseEvent*)),
+    connect(ui->labelxy_img_work, SIGNAL(xyLabel_clicked(xyLabel*, QMouseEvent*)),
             this, SLOT(on_xy_mousePress(xyLabel*,QMouseEvent*)));
+    refresh_work_poly(&pc_file);
 }
 
 MainWindow::~MainWindow()
@@ -30,9 +33,13 @@ MainWindow::~MainWindow()
     delete ui;
 }
 
-void MainWindow::refresh_bmp()
+
+void MainWindow::refresh_work_poly(poly_container* new_pc_work)
 {
-    ui->bmpLabel->setPixmap(QPixmap::fromImage(img));
+    pc_work = new_pc_work;
+    ui->labelxy_img_work->setPixmap(QPixmap::fromImage(
+        ui->checkBox_gridonly->checkState()?
+             new_pc_work->grid_img():new_pc_work->gray_img()));
 }
 
 void MainWindow::on_pushButton_load_clicked()
@@ -74,13 +81,14 @@ void MainWindow::on_pushButton_load_clicked()
 
     if(warn) QMessageBox::warning(this, "Image load warning", warn_text);
 
-    refresh_bmp();
+    ui->label_img_origin->setPixmap(QPixmap::fromImage(img));
 }
 
 void MainWindow::on_pushButton_drawPolyClean_clicked()
 {
-    xy.fill(QColor("white"));
-    ui->label_xy->setPixmap(QPixmap::fromImage(xy));
+    QImage i(257,257,QImage::Format_RGB32);
+    i.fill(QColor("white"));
+    ui->labelxy_img_work->setPixmap(QPixmap::fromImage(i));
 }
 
 void MainWindow::on_pushButton_polySplit_clicked()
@@ -97,40 +105,33 @@ void MainWindow::on_pushButton_polySplit_clicked()
     bool triangle =  (ui->lineEdit_polyDX->text() == "-")||
                      (ui->lineEdit_polyDY->text() == "-");
 
-    QVector<QImage> imgv (257, QImage(257,257,QImage::Format_RGB32));
-    QVector<QImage> imgcv (257, QImage(257,257,QImage::Format_RGB32));
-    QVector<poly> polv (257, triangle?poly(AX,AY,BX,BY,CX,CY):poly(AX,AY,BX,BY,CX,CY,DX,DY));
+    pcvec = QVector<poly_container> (257, triangle?poly(AX,AY,BX,BY,CX,CY):poly(AX,AY,BX,BY,CX,CY,DX,DY));
 
     ui->progressBar->setMaximum(256);
     for(int depth = 0; depth <= 256; depth++)
     {
         ui->progressBar->setValue(depth);   QApplication::processEvents();
-        polv[depth].split_img(depth, img);  QApplication::processEvents();
-        imgcv[depth].fill(QColor("white"));  QApplication::processEvents();
-        imgv[depth].fill(QColor("white"));  QApplication::processEvents();
-        polv[depth].print(imgv[depth]); QApplication::processEvents();
-        polv[depth].print(imgcv[depth], true); QApplication::processEvents();
+        pcvec[depth].construct_image(img, depth);  QApplication::processEvents();
+        pcvec[depth].render_grid(); QApplication::processEvents();
+        pcvec[depth].render_gray(); QApplication::processEvents();
     }
-    imgvec = imgv;
-    imgcvec = imgcv;
-    polvec = polv;
+
     ui->horizontalSlider->setValue(128);
 }
 
 void MainWindow::on_horizontalSlider_valueChanged(int value)
 {
     ui->label_progress->setText(QString::number(value));
-    ui->label_xy->setPixmap(QPixmap::fromImage(
-           ui->checkBox_gridonly->checkState()?imgvec[value]:imgcvec[value]));
+    refresh_work_poly(&pcvec[value]);
 }
 
 void MainWindow::on_xy_mousePress(xyLabel *clicked, QMouseEvent *event)
 {
-    poly x = polvec[ui->horizontalSlider->value()].getLowestPolyOnPix(pix(event->x(), event->y()));
+    poly x = pc_work->get_poly().getLowestPolyOnPix(pix(event->x(), event->y()));
     QImage i(257,257, QImage::Format_RGB32);
     i.fill(QColor("white"));
     x.print(i, true);
-    ui->outLabel->setPixmap(QPixmap::fromImage(i));
+    ui->label_img_poly->setPixmap(QPixmap::fromImage(i));
 }
 
 void MainWindow::on_pushButton_drawPolyABCD_clicked()
@@ -143,16 +144,17 @@ void MainWindow::on_pushButton_drawPolyABCD_clicked()
            BY = ui->lineEdit_polyBY->text().toDouble(),
            CY = ui->lineEdit_polyCY->text().toDouble(),
            DY = ui->lineEdit_polyDY->text().toDouble();
-    poly a(AX,AY,BX,BY,CX,CY,DX,DY);
-    a.split(ui->lineEdit_drawPolyABCDdepth->text().toInt());
-    a.print(xy);
-     ui->label_xy->setPixmap(QPixmap::fromImage(xy));
+    bool triangle =  (ui->lineEdit_polyDX->text() == "-")||
+                     (ui->lineEdit_polyDY->text() == "-");
+
+    poly_container a(triangle?poly(AX,AY,BX,BY,CX,CY):poly(AX,AY,BX,BY,CX,CY,DX,DY));
+    pc_depth = a;
+    pc_depth.poly_split(ui->lineEdit_drawPolyABCDdepth->text().toInt());
+    refresh_work_poly(&pc_depth);
 }
 
 void MainWindow::on_pushButton_polySplitOnce_clicked()
 {
-    QImage i(257,257,QImage::Format_RGB32);
-    i.fill(QColor("white"));
     double AX = ui->lineEdit_polyAX->text().toDouble(),
            BX = ui->lineEdit_polyBX->text().toDouble(),
            CX = ui->lineEdit_polyCX->text().toDouble(),
@@ -162,13 +164,11 @@ void MainWindow::on_pushButton_polySplitOnce_clicked()
            CY = ui->lineEdit_polyCY->text().toDouble(),
            DY = ui->lineEdit_polyDY->text().toDouble();
     int depth = ui->lineEdit_polyDepth->text().toInt();
-    poly a(AX,AY,BX,BY,CX,CY,DX,DY);
-    poly_depth = a;
-    poly_depth.split_img(depth, img);
-    poly_depth.print(i);
-    PC = poly_compress(poly_depth);
-
-    ui->label_xy->setPixmap(QPixmap::fromImage(i));
+    bool triangle =  (ui->lineEdit_polyDX->text() == "-")||
+                     (ui->lineEdit_polyDY->text() == "-");
+    pc_depth = poly_container(triangle?poly(AX,AY,BX,BY,CX,CY):poly(AX,AY,BX,BY,CX,CY,DX,DY));
+    pc_depth.construct_image(img, depth);
+    refresh_work_poly(&pc_depth);
 }
 
 void MainWindow::on_pushButton_polySplitPreset0_clicked()
@@ -207,62 +207,44 @@ void MainWindow::on_pushButton_polySplitPreset2_clicked()
     ui->lineEdit_polyDY->setText("256");
 }
 
-
-void MainWindow::on_pushButton_checkall_clicked()
+void MainWindow::on_checkBox_gridonly_toggled(bool)
 {
-    QImage i(257,257, QImage::Format_RGB32);
-    i.fill(QColor("white"));
-
-    for(int t = 0; t < 256; t++)
-        for(int m = 0, n = t; m <= t; m++, n--)
-        {
-            poly x = polvec[ui->horizontalSlider->value()].getLowestPolyOnPix(pix(m, n));
-            x.print(i);
-            x = polvec[ui->horizontalSlider->value()].getLowestPolyOnPix(pix(255-m, 255-n));
-            x.print(i);
-            ui->outLabel->setPixmap(QPixmap::fromImage(i));
-            QApplication::processEvents();
-        }
-
-
-    ui->outLabel->setPixmap(QPixmap::fromImage(i));
-}
-
-void MainWindow::on_pushButton_stackprint_clicked()
-{
-    QImage i(257,257, QImage::Format_RGB32);
-    i.fill(QColor("white"));
-
-    QVector<poly*> vp = polvec[ui->horizontalSlider->value()].getLowestPolyVec();
-    foreach(poly *p, vp)
-    {
-        p->print(i, true);
-        ui->outLabel_stack->setPixmap(QPixmap::fromImage(i));
-        QApplication::processEvents();
-    }
+    refresh_work_poly(pc_work);;
 }
 
 void MainWindow::on_pushButton_compress_clicked()
 {
-   // PC = ;
+    pc_work->compress();
+    //pc_work->print_compressed_data();
 }
 
-void MainWindow::on_pushButton_compress_print_clicked()
+void MainWindow::on_pushButton_decompress_clicked()
 {
-    PC.print();
+    pc_work->decompress();
+    refresh_work_poly(pc_work);;
 }
 
-void MainWindow::on_pushButton_compress_show_clicked()
+void MainWindow::on_pushButton_compress_save_clicked()
 {
-    QImage i(257,257, QImage::Format_RGB32);
-    i.fill(QColor("white"));
-    PC.decompress()->print(i, true);
-    ui->label_xy->setPixmap(QPixmap::fromImage(i));
+    QString savfile;
+    while(!savfile.length())
+    {
+       savfile = QFileDialog::getSaveFileName(this, "Сохранение изображения",
+                                           "D:\\w10profile\\Desktop\\faxmepic",
+                                           "PolyCompressed Image (*.pc)");
+    }
+    pc_work->save_compress(savfile);
 }
 
-void MainWindow::on_checkBox_gridonly_toggled(bool checked)
+void MainWindow::on_pushButton_compress_load_clicked()
 {
-    int sv = ui->horizontalSlider->value();
-    ui->label_xy->setPixmap(QPixmap::fromImage(
-           checked?imgvec[sv]:imgcvec[sv]));
+    QString savfile;
+    while(!savfile.length())
+    {
+       savfile = QFileDialog::getOpenFileName(this, "Сохранение изображения",
+                                           "D:\\w10profile\\Desktop\\faxmepic",
+                                           "PolyCompressed Image (*.pc)");
+    }
+    pc_file.load_compress(savfile);
+    refresh_work_poly(&pc_file);
 }

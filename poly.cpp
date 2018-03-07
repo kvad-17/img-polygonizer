@@ -1,8 +1,9 @@
-#include <mainwindow.h>
+#include "poly.h"
 #include <QDebug>
 #include <QtGlobal>
 #include <QStack>
 #include <QVector>
+#include <QPainter>
 
 double sideval(double ax, double ay,
                double bx, double by,
@@ -35,6 +36,30 @@ poly::poly(const poly &x)
         Q = new poly(*(x.Q));
     }
 }
+void poly::operator = (const poly &x)
+{
+    if(is_rectangle || is_splitted)
+    {
+        delete P;
+        delete Q;
+    }
+    gray = x.gray;
+    ax = x.ax;
+    ay = x.ay;
+    bx = x.bx;
+    by = x.by;
+    cx = x.cx;
+    cy = x.cy;
+    is_rectangle = x.is_rectangle;
+    is_splitted = x.is_splitted;
+
+    if(is_rectangle || is_splitted)
+    {
+        P = new poly(*(x.P));
+        Q = new poly(*(x.Q));
+    }
+}
+
 poly::~poly()
 {
     if(is_splitted || is_rectangle)
@@ -42,6 +67,8 @@ poly::~poly()
         delete P;
         delete Q;
     }
+    is_splitted = false;
+    is_rectangle = false;
 }
 bool poly::not_empty()
 {
@@ -77,7 +104,7 @@ poly::poly(double _ax, double _ay,
     Q = new poly(_bx, _by, _cx, _cy, _dx, _dy); //BCD
 }
 
-void poly::print(QImage &img, bool fill = false, int n = -1)
+void poly::print(QImage &img, bool fill, int n)
 {
     QPainter painter(&img);
     if(fill)
@@ -173,8 +200,8 @@ void poly::split(int n)
     if(n) {P->split(n-1); Q->split(n-1);}
 }
 
-void poly::split_img(int lim, QImage &img)
-{   //qDebug() << "split_img start";
+void poly::split_img(int lim, const QImage &img)
+{
     int minX, minY, maxX, maxY;
     if(is_rectangle)
     {
@@ -193,7 +220,6 @@ void poly::split_img(int lim, QImage &img)
 
     int sum = 0, c = 0, g, g_max = 0, g_min = 255;
 
-
     for(int x = minX; x < maxX; x++)
         for(int y = minY; y < maxY; y++)
             if (has_inside(pix(x,y)))
@@ -203,8 +229,8 @@ void poly::split_img(int lim, QImage &img)
                 if (g > g_max) g_max = g;
                 if (g < g_min) g_min = g;
             }
-
-    gray = sum/c;
+   // qDebug() << c;
+    gray = sum/(c);
 
     if(g_max-g_min >= lim)
     {
@@ -215,7 +241,7 @@ void poly::split_img(int lim, QImage &img)
             P->split_img(lim, img);
             Q->split_img(lim, img);
         }
-    }//qDebug() << "split_img end";
+    }
 }
 
 poly poly::getLowestPolyOnPix(pix px)
