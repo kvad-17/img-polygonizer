@@ -39,11 +39,13 @@ public:
     void render_gray();
     void save_compress(QString filename);
     void load_compress(QString filename);
-    // load_compress_multi(int pos);
+    static void save_compress_multi(QString filename, QVector<poly_container> &pv);
+    static QVector<poly_container> load_compress_multi(QString filename);
+    
     poly get_poly();
     QImage& grid_img();
     QImage& gray_img();
-    QVector<uchar> get_compressed_data();
+    QByteArray& get_compressed_data();
     void print_compressed_data();
 
 };

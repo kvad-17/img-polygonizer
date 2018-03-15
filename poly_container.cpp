@@ -1,8 +1,83 @@
 #include "poly.h"
 #include "poly_container.h"
 
+void poly_container::save_compress_multi(QString filename, QVector<poly_container> &pv)
+{
+    foreach (poly_container pc, pv) {
+        pc.save_compress(filename);
+    }
+}
+
+QVector<poly_container> poly_container::load_compress_multi(QString filename)
+{
+    QFile f(filename);
+    f.open(QIODevice::ReadOnly);
+    QByteArray cdata = f.readAll();
+    f.close();
+    
+    QVector<poly_container> pc;
+    poly P;
+    int pd = 0;
+    while(pd < cdata.size())
+    {qDebug() << pd;
+        P = poly(0,0,256,0,0,256,256,256);
+        if((cdata[pd]>>7&1) == 0)
+        {
+            P.gray = cdata[pd+1];
+            pd+=2;
+        }
+        else
+        {
+            P.split(0);
+            poly *T;
+            QQueue<poly*> C, N;
+            QQueue<uchar*> G;
+            bool ts0, ts1;
+            char pb = 6;
+            ts0 = (cdata[pd]>>(pb--))&1; if(pb==-1){pd++; pb=7;}
+            ts1 = (cdata[pd]>>(pb--))&1; if(pb==-1){pd++; pb=7;}
+
+            C.enqueue(&P);
+
+            while(!C.empty() || !N.empty())
+            {
+                T = C.dequeue();
+
+                if(ts0)
+                {
+                    N.enqueue(T->Q);
+                    T->Q->split(0);
+                }else G.enqueue(&T->Q->gray);
+                if(ts1)
+                {
+                    N.enqueue(T->P);
+                    T->P->split(0);
+                }else G.enqueue(&T->P->gray);
+
+                if(C.empty()) C.swap(N);
+                if(!C.empty())
+                {
+                    ts0 = (cdata[pd]>>(pb--))&1; if(pb==-1){pd++; pb=7;}
+                    ts1 = (cdata[pd]>>(pb--))&1; if(pb==-1){pd++; pb=7;}
+                }
+            }
+            if(pb!=7) pd++;
+            while(!G.empty())
+            {
+                *(G.dequeue()) = cdata[pd++];
+            }
+
+        }
+        pc.append(poly_container(P));
+        pc.last().render_grid();
+        pc.last().render_gray();
+    }
+    return pc;
+}
+
 void poly_container::save_compress(QString filename)
 {
+    if(!poly_compressed) compress();
     QFile f(filename);
     f.open(QIODevice::Append);
     f.write(compressed_data, compressed_data.size());
@@ -21,12 +96,10 @@ void poly_container::load_compress(QString filename)
 
 void poly_container::decompress()
 {
-    qDebug() << compressed_data.size();
-    qDebug() << compressed_data;
     if(poly_compressed)
     {
         P = poly(0,0,256,0,0,256,256,256);
-        if(compressed_data[0]>>7&1 == 0)
+        if((compressed_data[0]>>7&1) == 0)
             P.gray = compressed_data[1];
         else
         {
@@ -68,11 +141,11 @@ void poly_container::decompress()
             {
                 *(G.dequeue()) = compressed_data[pd++];
             }
-            gray_rendered = false;
-            grid_rendered = false;
-            render_gray();
-            render_grid();
         }
+        gray_rendered = false;
+        grid_rendered = false;
+        render_gray();
+        render_grid();
     }
 }
 
@@ -108,19 +181,18 @@ void poly_container::compress()
                 tree_struct.append( ps = tpoly->P->is_splitted );
                 if(qs) T.enqueue(tpoly->Q); else tree_data.append(tpoly->Q->gray);
                 if(ps) T.enqueue(tpoly->P); else tree_data.append(tpoly->P->gray);
-            }
-
-            for(int i = 0; i < tree_struct.size(); i+=8 )
-            {
-                uchar t = 0;
-                for(int b = 0; b<8; b++)
-                    t|= (((i+b < tree_struct.size())?tree_struct[i+b]:0)<<7-b);
-                compressed_data.append(t);
-            }
-            for(int i = 0; i < tree_data.size(); i++)
-            {
-                compressed_data.append(tree_data[i]);
-            }
+            }       
+        }
+        for(int i = 0; i < tree_struct.size(); i+=8 )
+        {
+            uchar t = 0;
+            for(int b = 0; b<8; b++)
+                t|= (((i+b < tree_struct.size())?tree_struct[i+b]:0)<<7-b);
+            compressed_data.append(t);
+        }
+        for(int i = 0; i < tree_data.size(); i++)
+        {
+            compressed_data.append(tree_data[i]);
         }
     }
 }
@@ -168,7 +240,7 @@ poly_container::poly_container(const poly& A)
 {
 
     P = A;
-    clear_compress();
+    poly_compressed = false;
     grid_rendered = false;
     gray_rendered = false;
 }
@@ -209,7 +281,7 @@ void poly_container::render_grid()
 {
     if(!grid_rendered)
     {
-        grid = QImage(257,257,QImage::Format_RGB32);
+        grid = QImage(257,257,QImage::Format_Grayscale8);
         grid.fill(QColor("white"));
         P.print(grid);
         grid_rendered = true;
@@ -219,11 +291,14 @@ void poly_container::render_gray()
 {
     if(!gray_rendered)
     {
-        gray = QImage(257,257,QImage::Format_RGB32);
+        gray = QImage(256,256,QImage::Format_Grayscale8);
         gray.fill(QColor("white"));
         P.print(gray, true);
         gray_rendered = true;
     }
 }
 
-
+QByteArray& poly_container::get_compressed_data()
+{
+    return compressed_data;
+}

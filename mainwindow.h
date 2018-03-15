@@ -48,13 +48,23 @@ private slots:
 
     void on_checkBox_gridonly_toggled(bool checked);
 
-    void on_pushButton_compress_clicked();
-
-    void on_pushButton_decompress_clicked();
-
     void on_pushButton_compress_save_clicked();
 
     void on_pushButton_compress_load_clicked();
+
+    void on_pushButton_conv_clicked();
+
+    void on_pushButton_save_orig_bmp_clicked();
+
+    void on_pushButton_save_orig_jpg_clicked();
+
+    void on_pushButton_save_work_bmp_clicked();
+
+    void on_pushButton_save_work_jpg_clicked();
+
+    void on_pushButton_compress_save_render_clicked();
+
+    void on_pushButton_compress_load_render_clicked();
 
 private:
     Ui::MainWindow *ui;

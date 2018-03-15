@@ -4,7 +4,7 @@
 #include "poly.h"
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
-
+#include <QBuffer>
 
 xyLabel::xyLabel( QWidget * parent ):QLabel(parent) {}
 
@@ -20,11 +20,12 @@ MainWindow::MainWindow(QWidget *parent) :
     ui(new Ui::MainWindow)
 {
     ui->setupUi(this);
+    img = pc_file.grid_img();
 
-    xy = QImage(257,257,QImage::Format_RGB32);
-    xy.fill(QColor("white"));
     connect(ui->labelxy_img_work, SIGNAL(xyLabel_clicked(xyLabel*, QMouseEvent*)),
             this, SLOT(on_xy_mousePress(xyLabel*,QMouseEvent*)));
+    ui->label_img_origin->setPixmap(QPixmap::fromImage(pc_file.grid_img()));
+    ui->label_img_poly->setPixmap(QPixmap::fromImage(pc_file.grid_img()));
     refresh_work_poly(&pc_file);
 }
 
@@ -36,10 +37,34 @@ MainWindow::~MainWindow()
 
 void MainWindow::refresh_work_poly(poly_container* new_pc_work)
 {
+    QImage i = ui->checkBox_gridonly->checkState()?
+                new_pc_work->grid_img():new_pc_work->gray_img();
     pc_work = new_pc_work;
-    ui->labelxy_img_work->setPixmap(QPixmap::fromImage(
-        ui->checkBox_gridonly->checkState()?
-             new_pc_work->grid_img():new_pc_work->gray_img()));
+    ui->labelxy_img_work->setPixmap(QPixmap::fromImage(i));
+    pc_work->compress();
+
+    QByteArray iba;
+    QBuffer buff (&iba);
+    img.save(&buff, "BMP");
+    double bmp_sz = buff.size();
+    img.save(&buff, "JPG");
+    double jpg_sz = buff.size()-bmp_sz;
+    double poly_sz = pc_work->get_compressed_data().size();
+
+
+    qDebug() << "BMP: " << bmp_sz;
+    qDebug() << "JPG: " << jpg_sz;
+    qDebug() << "PLY: " << poly_sz;
+
+    double s = 0;
+    for(int x = 0; x < 256; x++)
+        for(int y = 0; y < 256; y++)
+            s += pow(qGray(img.pixel(x,y)) - qGray(i.pixel(x,y)), 2);
+    s = sqrt(s/(256*256));
+
+    ui->label_sko->setText(QString::number(s));
+    ui->label_kbmp->setText(QString::number(bmp_sz/poly_sz));
+    ui->label_kjpg->setText(QString::number(jpg_sz/poly_sz));
 }
 
 void MainWindow::on_pushButton_load_clicked()
@@ -72,11 +97,11 @@ void MainWindow::on_pushButton_load_clicked()
         img = img.copy(0,0,256,256);
     }
 
-    if(img.format() != QImage::Format_RGB32)
+    if(img.format() != QImage::Format_Grayscale8)
     {
         warn = true;
         warn_text += "  - format converted QImageFormat/" + QString::number(img.format()) + " -> Format_RGB32\n";
-        img = img.convertToFormat(QImage::Format_RGB32);
+        img = img.convertToFormat(QImage::Format_Grayscale8);
     }
 
     if(warn) QMessageBox::warning(this, "Image load warning", warn_text);
@@ -86,7 +111,7 @@ void MainWindow::on_pushButton_load_clicked()
 
 void MainWindow::on_pushButton_drawPolyClean_clicked()
 {
-    QImage i(257,257,QImage::Format_RGB32);
+    QImage i(257,257,QImage::Format_Grayscale8);
     i.fill(QColor("white"));
     ui->labelxy_img_work->setPixmap(QPixmap::fromImage(i));
 }
@@ -128,7 +153,7 @@ void MainWindow::on_horizontalSlider_valueChanged(int value)
 void MainWindow::on_xy_mousePress(xyLabel *clicked, QMouseEvent *event)
 {
     poly x = pc_work->get_poly().getLowestPolyOnPix(pix(event->x(), event->y()));
-    QImage i(257,257, QImage::Format_RGB32);
+    QImage i(257,257, QImage::Format_Grayscale8);
     i.fill(QColor("white"));
     x.print(i, true);
     ui->label_img_poly->setPixmap(QPixmap::fromImage(i));
@@ -212,18 +237,6 @@ void MainWindow::on_checkBox_gridonly_toggled(bool)
     refresh_work_poly(pc_work);;
 }
 
-void MainWindow::on_pushButton_compress_clicked()
-{
-    pc_work->compress();
-    //pc_work->print_compressed_data();
-}
-
-void MainWindow::on_pushButton_decompress_clicked()
-{
-    pc_work->decompress();
-    refresh_work_poly(pc_work);;
-}
-
 void MainWindow::on_pushButton_compress_save_clicked()
 {
     QString savfile;
@@ -231,8 +244,9 @@ void MainWindow::on_pushButton_compress_save_clicked()
     {
        savfile = QFileDialog::getSaveFileName(this, "Сохранение изображения",
                                            "D:\\w10profile\\Desktop\\faxmepic",
-                                           "PolyCompressed Image (*.pc)");
+                                           "PolyCompressed Image (*.pc);;All files (*)");
     }
+    pc_work->compress();
     pc_work->save_compress(savfile);
 }
 
@@ -241,10 +255,75 @@ void MainWindow::on_pushButton_compress_load_clicked()
     QString savfile;
     while(!savfile.length())
     {
-       savfile = QFileDialog::getOpenFileName(this, "Сохранение изображения",
+       savfile = QFileDialog::getOpenFileName(this, "Открытие изображения",
                                            "D:\\w10profile\\Desktop\\faxmepic",
-                                           "PolyCompressed Image (*.pc)");
+                                           "PolyCompressed Image (*.pc);;All files (*)");
     }
     pc_file.load_compress(savfile);
+    pc_file.decompress();
     refresh_work_poly(&pc_file);
+}
+
+void MainWindow::on_pushButton_conv_clicked()
+{
+    for(int x = 0; x < 256; x++)
+        for(int y = 0; y < 256; y++)
+        {
+            int g = qGray(img.pixel(x,y));
+            img.setPixel(x,y,QColor::fromRgb(g,g,g).rgb());
+        }
+    ui->label_img_origin->setPixmap(QPixmap::fromImage(img));
+}
+
+void MainWindow::on_pushButton_save_orig_bmp_clicked()
+{
+    QString savfile = QFileDialog::getSaveFileName(this, "Сохранение изображения",
+                                           "",
+                                           "Bitmap Image (*.bmp)");
+    if(savfile.length()) img.save(savfile);
+}
+
+void MainWindow::on_pushButton_save_orig_jpg_clicked()
+{
+    QString savfile = QFileDialog::getSaveFileName(this, "Сохранение изображения",
+                                           "",
+                                           "JPEG Image (*.jpg)");
+    if(savfile.length()) img.save(savfile);
+}
+
+void MainWindow::on_pushButton_save_work_bmp_clicked()
+{
+    QString savfile = QFileDialog::getSaveFileName(this, "Сохранение изображения",
+                                           "",
+                                           "Bitmap Image (*.bmp)");
+    if(savfile.length())
+        ui->labelxy_img_work->pixmap()->toImage().save(savfile);
+}
+
+void MainWindow::on_pushButton_save_work_jpg_clicked()
+{
+    QString savfile = QFileDialog::getSaveFileName(this, "Сохранение изображения",
+                                           "",
+                                           "JPEG Image (*.jpg)");
+    if(savfile.length())
+        ui->labelxy_img_work->pixmap()->toImage().save(savfile);
+}
+
+void MainWindow::on_pushButton_compress_save_render_clicked()
+{
+    QString savfile = QFileDialog::getSaveFileName(this, "Сохранение рендера",
+                                           "",
+                                           "PolyCompressed Render (*.pcr)");
+    if(savfile.length())
+        poly_container::save_compress_multi(savfile, pcvec);
+}
+
+void MainWindow::on_pushButton_compress_load_render_clicked()
+{
+    QString savfile = QFileDialog::getOpenFileName(this, "Загрузка рендера",
+                                           "",
+                                           "PolyCompressed Render (*.pcr)");
+    if(savfile.length())
+        pcvec = poly_container::load_compress_multi(savfile);
+    refresh_work_poly(&pcvec[ui->horizontalSlider->value()]);
 }
