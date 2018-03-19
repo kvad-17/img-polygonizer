@@ -6,6 +6,8 @@
 #include <QDebug>
 #include <QImage>
 #include <QFile>
+#include <QProgressBar>
+#include <QApplication>
 
 #include "poly.h"
 
@@ -40,7 +42,7 @@ public:
     void save_compress(QString filename);
     void load_compress(QString filename);
     static void save_compress_multi(QString filename, QVector<poly_container> &pv);
-    static QVector<poly_container> load_compress_multi(QString filename);
+    static QVector<poly_container> load_compress_multi(QString filename, QProgressBar *pbar=nullptr);
     
     poly get_poly();
     QImage& grid_img();

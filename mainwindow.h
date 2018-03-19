@@ -42,17 +42,11 @@ private slots:
 
     void on_pushButton_polySplitPreset0_clicked();
 
-    void on_pushButton_polySplitPreset1_clicked();
-
-    void on_pushButton_polySplitPreset2_clicked();
-
     void on_checkBox_gridonly_toggled(bool checked);
 
     void on_pushButton_compress_save_clicked();
 
     void on_pushButton_compress_load_clicked();
-
-    void on_pushButton_conv_clicked();
 
     void on_pushButton_save_orig_bmp_clicked();
 

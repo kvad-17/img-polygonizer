@@ -44,3 +44,14 @@ void MainWindow::on_pushButton_compress_show_clicked()
     PC.decompress()->print(i, true);
     ui->label_xy->setPixmap(QPixmap::fromImage(i));
 }
+
+void MainWindow::on_pushButton_conv_clicked()
+{
+    for(int x = 0; x < 256; x++)
+        for(int y = 0; y < 256; y++)
+        {
+            int g = qGray(img.pixel(x,y));
+            img.setPixel(x,y,QColor::fromRgb(g,g,g).rgb());
+        }
+    ui->label_img_origin->setPixmap(QPixmap::fromImage(img));
+}

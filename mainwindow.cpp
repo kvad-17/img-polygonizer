@@ -6,6 +6,9 @@
 #include "ui_mainwindow.h"
 #include <QBuffer>
 
+//#define PICPATH "D:\\w10profile\\Desktop\\faxmepic"
+#define PICPATH ""
+
 xyLabel::xyLabel( QWidget * parent ):QLabel(parent) {}
 
 extern MainWindow *p;
@@ -26,6 +29,7 @@ MainWindow::MainWindow(QWidget *parent) :
             this, SLOT(on_xy_mousePress(xyLabel*,QMouseEvent*)));
     ui->label_img_origin->setPixmap(QPixmap::fromImage(pc_file.grid_img()));
     ui->label_img_poly->setPixmap(QPixmap::fromImage(pc_file.grid_img()));
+    pcvec = QVector<poly_container> (257, pc_file);
     refresh_work_poly(&pc_file);
 }
 
@@ -73,7 +77,7 @@ void MainWindow::on_pushButton_load_clicked()
     while(!bmpfile.length())
     {
        bmpfile = QFileDialog::getOpenFileName(this, "Открытие изображения",
-                                           "D:\\w10profile\\Desktop\\faxmepic",
+                                           PICPATH,
                                            "Images (*.bmp *.png *.jpg *.jpeg *.tiff *.gif)");
     }
 
@@ -208,30 +212,6 @@ void MainWindow::on_pushButton_polySplitPreset0_clicked()
     ui->lineEdit_polyDY->setText("256");
 }
 
-void MainWindow::on_pushButton_polySplitPreset1_clicked()
-{
-    ui->lineEdit_polyAX->setText("96");
-    ui->lineEdit_polyBX->setText("210");
-    ui->lineEdit_polyCX->setText("40");
-    ui->lineEdit_polyDX->setText("160");
-    ui->lineEdit_polyAY->setText("96");
-    ui->lineEdit_polyBY->setText("64");
-    ui->lineEdit_polyCY->setText("192");
-    ui->lineEdit_polyDY->setText("160");
-}
-
-void MainWindow::on_pushButton_polySplitPreset2_clicked()
-{
-    ui->lineEdit_polyAX->setText("0");
-    ui->lineEdit_polyBX->setText("256");
-    ui->lineEdit_polyCX->setText("0");
-    ui->lineEdit_polyDX->setText("256");
-    ui->lineEdit_polyAY->setText("0");
-    ui->lineEdit_polyBY->setText("0");
-    ui->lineEdit_polyCY->setText("256");
-    ui->lineEdit_polyDY->setText("256");
-}
-
 void MainWindow::on_checkBox_gridonly_toggled(bool)
 {
     refresh_work_poly(pc_work);;
@@ -243,7 +223,7 @@ void MainWindow::on_pushButton_compress_save_clicked()
     while(!savfile.length())
     {
        savfile = QFileDialog::getSaveFileName(this, "Сохранение изображения",
-                                           "D:\\w10profile\\Desktop\\faxmepic",
+                                           PICPATH,
                                            "PolyCompressed Image (*.pc);;All files (*)");
     }
     pc_work->compress();
@@ -256,7 +236,7 @@ void MainWindow::on_pushButton_compress_load_clicked()
     while(!savfile.length())
     {
        savfile = QFileDialog::getOpenFileName(this, "Открытие изображения",
-                                           "D:\\w10profile\\Desktop\\faxmepic",
+                                           PICPATH,
                                            "PolyCompressed Image (*.pc);;All files (*)");
     }
     pc_file.load_compress(savfile);
@@ -264,21 +244,10 @@ void MainWindow::on_pushButton_compress_load_clicked()
     refresh_work_poly(&pc_file);
 }
 
-void MainWindow::on_pushButton_conv_clicked()
-{
-    for(int x = 0; x < 256; x++)
-        for(int y = 0; y < 256; y++)
-        {
-            int g = qGray(img.pixel(x,y));
-            img.setPixel(x,y,QColor::fromRgb(g,g,g).rgb());
-        }
-    ui->label_img_origin->setPixmap(QPixmap::fromImage(img));
-}
-
 void MainWindow::on_pushButton_save_orig_bmp_clicked()
 {
     QString savfile = QFileDialog::getSaveFileName(this, "Сохранение изображения",
-                                           "",
+                                           PICPATH,
                                            "Bitmap Image (*.bmp)");
     if(savfile.length()) img.save(savfile);
 }
@@ -286,7 +255,7 @@ void MainWindow::on_pushButton_save_orig_bmp_clicked()
 void MainWindow::on_pushButton_save_orig_jpg_clicked()
 {
     QString savfile = QFileDialog::getSaveFileName(this, "Сохранение изображения",
-                                           "",
+                                           PICPATH,
                                            "JPEG Image (*.jpg)");
     if(savfile.length()) img.save(savfile);
 }
@@ -294,7 +263,7 @@ void MainWindow::on_pushButton_save_orig_jpg_clicked()
 void MainWindow::on_pushButton_save_work_bmp_clicked()
 {
     QString savfile = QFileDialog::getSaveFileName(this, "Сохранение изображения",
-                                           "",
+                                           PICPATH,
                                            "Bitmap Image (*.bmp)");
     if(savfile.length())
         ui->labelxy_img_work->pixmap()->toImage().save(savfile);
@@ -303,7 +272,7 @@ void MainWindow::on_pushButton_save_work_bmp_clicked()
 void MainWindow::on_pushButton_save_work_jpg_clicked()
 {
     QString savfile = QFileDialog::getSaveFileName(this, "Сохранение изображения",
-                                           "",
+                                           PICPATH,
                                            "JPEG Image (*.jpg)");
     if(savfile.length())
         ui->labelxy_img_work->pixmap()->toImage().save(savfile);
@@ -312,8 +281,8 @@ void MainWindow::on_pushButton_save_work_jpg_clicked()
 void MainWindow::on_pushButton_compress_save_render_clicked()
 {
     QString savfile = QFileDialog::getSaveFileName(this, "Сохранение рендера",
-                                           "",
-                                           "PolyCompressed Render (*.pcr)");
+                                           PICPATH,
+                                           "PolyCompressed Render (*.pcr);;All files (*)");
     if(savfile.length())
         poly_container::save_compress_multi(savfile, pcvec);
 }
@@ -321,9 +290,9 @@ void MainWindow::on_pushButton_compress_save_render_clicked()
 void MainWindow::on_pushButton_compress_load_render_clicked()
 {
     QString savfile = QFileDialog::getOpenFileName(this, "Загрузка рендера",
-                                           "",
-                                           "PolyCompressed Render (*.pcr)");
+                                           PICPATH,
+                                           "PolyCompressed Render (*.pcr);;All files (*)");
     if(savfile.length())
-        pcvec = poly_container::load_compress_multi(savfile);
+        pcvec = poly_container::load_compress_multi(savfile, ui->progressBar);
     refresh_work_poly(&pcvec[ui->horizontalSlider->value()]);
 }

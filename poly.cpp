@@ -124,7 +124,7 @@ void poly::print(QImage &img, bool fill, int n, bool abc)
         QPolygon p;
         p << QPoint(ax,ay) << QPoint(bx,by) << QPoint(cx,cy);
         painter.drawPolygon(p);
-        if(abc)
+        if(abc && 0)
         {
             painter.setPen(Qt::SolidLine);
             painter.drawText(QPoint(ax,ay), "A");

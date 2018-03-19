@@ -8,7 +8,7 @@ void poly_container::save_compress_multi(QString filename, QVector<poly_containe
     }
 }
 
-QVector<poly_container> poly_container::load_compress_multi(QString filename)
+QVector<poly_container> poly_container::load_compress_multi(QString filename, QProgressBar* pbar)
 {
     QFile f(filename);
     f.open(QIODevice::ReadOnly);
@@ -18,6 +18,7 @@ QVector<poly_container> poly_container::load_compress_multi(QString filename)
     QVector<poly_container> pc;
     poly P;
     int pd = 0;
+    if(pbar) pbar->setMaximum(cdata.size());
     while(pd < cdata.size())
     {qDebug() << pd;
         P = poly(0,0,256,0,0,256,256,256);
@@ -66,11 +67,11 @@ QVector<poly_container> poly_container::load_compress_multi(QString filename)
             {
                 *(G.dequeue()) = cdata[pd++];
             }
-
         }
         pc.append(poly_container(P));
         pc.last().render_grid();
         pc.last().render_gray();
+        if(pbar) pbar->setValue(pd); QApplication::processEvents();
     }
     return pc;
 }
@@ -98,7 +99,7 @@ void poly_container::decompress()
 {
     if(poly_compressed)
     {
-        P = poly(0,0,256,0,0,256,256,256);
+        P = poly(0,0,256,0,0,256,256,256);//try magic here
         if((compressed_data[0]>>7&1) == 0)
             P.gray = compressed_data[1];
         else
@@ -147,11 +148,6 @@ void poly_container::decompress()
         render_gray();
         render_grid();
     }
-}
-
-void poly_container::print_compressed_data()
-{
-
 }
 
 void poly_container::compress()
@@ -259,6 +255,7 @@ poly_container::poly_container(const poly& A)
 void poly_container::construct_image (const QImage& img, int depth)
 {
     P.split_img(depth, img);
+
     clear_compress();
     grid_rendered = false;
     gray_rendered = false;
