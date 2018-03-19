@@ -100,11 +100,11 @@ void MainWindow::on_pushButton_load_clicked()
     if(img.format() != QImage::Format_Grayscale8)
     {
         warn = true;
-        warn_text += "  - format converted QImageFormat/" + QString::number(img.format()) + " -> Format_RGB32\n";
+        warn_text += "  - format converted QImageFormat/" + QString::number(img.format()) + " -> Format_Grayscale8\n";
         img = img.convertToFormat(QImage::Format_Grayscale8);
     }
 
-    if(warn) QMessageBox::warning(this, "Image load warning", warn_text);
+    //if(warn) QMessageBox::warning(this, "Image load warning", warn_text);
 
     ui->label_img_origin->setPixmap(QPixmap::fromImage(img));
 }
@@ -155,7 +155,7 @@ void MainWindow::on_xy_mousePress(xyLabel *clicked, QMouseEvent *event)
     poly x = pc_work->get_poly().getLowestPolyOnPix(pix(event->x(), event->y()));
     QImage i(257,257, QImage::Format_Grayscale8);
     i.fill(QColor("white"));
-    x.print(i, true);
+    x.print(i, true, -1, true);
     ui->label_img_poly->setPixmap(QPixmap::fromImage(i));
 }
 

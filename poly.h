@@ -38,11 +38,11 @@ public:
     //coords setter
     void set(double _ax, double _ay, double _bx, double _by, double _cx, double _cy);
 
-    void print(QImage &img, bool fill=false, int n=-1);
+    void print(QImage &img, bool fill=false, int n=-1, bool abc = false);
 
     bool has_inside(pix p);
 
-
+    static void print_tree(poly *P, int level = 0);
     void split_img(int lim, const QImage &img);
 
     poly getLowestPolyOnPix(pix px);

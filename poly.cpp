@@ -32,16 +32,16 @@ poly::poly(const poly &x)
 
     if(is_rectangle || is_splitted)
     {
-        P = new poly(*(x.P));
         Q = new poly(*(x.Q));
+        P = new poly(*(x.P));
     }
 }
 void poly::operator = (const poly &x)
 {
     if(is_rectangle || is_splitted)
     {
-        delete P;
         delete Q;
+        delete P;
     }
     gray = x.gray;
     ax = x.ax;
@@ -55,8 +55,8 @@ void poly::operator = (const poly &x)
 
     if(is_rectangle || is_splitted)
     {
-        P = new poly(*(x.P));
         Q = new poly(*(x.Q));
+        P = new poly(*(x.P));
     }
 }
 
@@ -64,8 +64,8 @@ poly::~poly()
 {
     if(is_splitted || is_rectangle)
     {
-        delete P;
         delete Q;
+        delete P;
     }
     is_splitted = false;
     is_rectangle = false;
@@ -100,11 +100,11 @@ poly::poly(double _ax, double _ay,
     poly();
     is_rectangle = true;
     is_splitted = false;
-    P = new poly(_ax, _ay, _bx, _by, _cx, _cy); //ABC
-    Q = new poly(_bx, _by, _cx, _cy, _dx, _dy); //BCD
+    Q = new poly(_ax, _ay, _bx, _by, _cx, _cy); //ABC
+    P = new poly(_bx, _by, _cx, _cy, _dx, _dy); //BCD
 }
 
-void poly::print(QImage &img, bool fill, int n)
+void poly::print(QImage &img, bool fill, int n, bool abc)
 {
     QPainter painter(&img);
     if(fill)
@@ -116,7 +116,7 @@ void poly::print(QImage &img, bool fill, int n)
     if(is_rectangle)        //  AB
     {                       //  CD
         QPolygon p;
-        p << QPoint(P->ax,P->ay) << QPoint(P->bx,P->by) << QPoint(Q->cx,Q->cy) << QPoint(Q->bx,Q->by);
+        p << QPoint(Q->ax,Q->ay) << QPoint(Q->bx,Q->by) << QPoint(P->cx,P->cy) << QPoint(P->bx,P->by);
         painter.drawPolygon(p);
     }
     else
@@ -124,9 +124,16 @@ void poly::print(QImage &img, bool fill, int n)
         QPolygon p;
         p << QPoint(ax,ay) << QPoint(bx,by) << QPoint(cx,cy);
         painter.drawPolygon(p);
+        if(abc)
+        {
+            painter.setPen(Qt::SolidLine);
+            painter.drawText(QPoint(ax,ay), "A");
+            painter.drawText(QPoint(bx,by), "B");
+            painter.drawText(QPoint(cx,cy), "C");
+        }
     }
     painter.end();
-    if(n && is_splitted) {P->print(img, fill, n-1); Q->print(img, fill, n-1);}
+    if(n && is_splitted) {Q->print(img, fill, n-1); P->print(img, fill, n-1);}
 }
 
 #define mgx 0.46756456
@@ -146,15 +153,29 @@ int pix::y()
     return round(dy-mgy);
 }
 
+void poly::print_tree(poly *P, int level)
+{
+    QString out;
+    for(int i = 0; i < level; i++) out+=' ';
+    out+=QString::number(P->is_splitted);
+    qDebug() << out;
+
+    if(P->is_splitted)
+    {
+        print_tree(P->Q, level+1);
+        print_tree(P->P, level+1);
+    }
+}
+
 bool poly::has_inside(pix p)
 {
     double sab, sbc, scd, sda;
     if(is_rectangle)
     {
-        sab = sideval(P->ax,P->ay,P->bx,P->by, p.dx, p.dy);//AB
-        sbc = sideval(Q->ax,Q->ay,Q->cx,Q->cy, p.dx, p.dy);//BD
-        scd = sideval(Q->cx,Q->cy,Q->bx,Q->by, p.dx, p.dy);//DC
-        sda = sideval(P->cx,P->cy,P->ax,P->ay, p.dx, p.dy);//CA
+        sab = sideval(Q->ax,Q->ay,Q->bx,Q->by, p.dx, p.dy);//AB
+        sbc = sideval(P->ax,P->ay,P->cx,P->cy, p.dx, p.dy);//BD
+        scd = sideval(P->cx,P->cy,P->bx,P->by, p.dx, p.dy);//DC
+        sda = sideval(Q->cx,Q->cy,Q->ax,Q->ay, p.dx, p.dy);//CA
     }
     else
     {
@@ -175,29 +196,57 @@ void poly::split(int n)
         double lab = sqrt(pow(ax-bx,2)+pow(ay-by,2));
         double lac = sqrt(pow(ax-cx,2)+pow(ay-cy,2));
         double lbc = sqrt(pow(bx-cx,2)+pow(by-cy,2));
-      //  qDebug() << lab << ' ' << lac << ' ' << lbc << ' ';
+
+        //без sideval'ов можно обойтись, они нужны лишь для человекочитаемости сжатых данных
+        //почему в условиях нужно было поставить '<0' для меня загадка, по экспериментам, условие должно быть обратным
+        //возможно, разгадка кроется не в этой функции, но пока пусть работает так
+        //FIX::разгадка найдена. В экранных координатах ось Y отражена обратно относительно математических координат.
+        //Поэтому результаты sideval следует трактовать наоборот, из-за зеркального отражения всего изображения.
 
         double tx, ty;
         if(lab > lac && lab > lbc){
             tx = (ax+bx)/2; ty = (ay+by)/2;
-            P = new poly(cx, cy, ax, ay, tx, ty);
-            Q = new poly(cx, cy, bx, by, tx, ty);
-           // qDebug() << "lab";
+            if( sideval(tx,ty,cx,cy,ax,ay)<0 )//Точка A находится слева от вектора TC?
+            {
+//                qDebug() << "sab " << tx << ' ' << ty << ' ' << cx << ' ' << cy << ' ' << ax << ' ' << ay
+//                            << ' ' << sideval(tx,ty,cx,cy,ax,ay);
+//                qDebug() << "Q " << cx << ' ' << cy << ' ' << ax << ' ' << ay << ' ' << tx << ' ' << ty;
+//                qDebug() << "P " << cx << ' ' << cy << ' ' << bx << ' ' << by << ' ' << tx << ' ' << ty;
+                Q = new poly(cx, cy, ax, ay, tx, ty);
+                P = new poly(cx, cy, bx, by, tx, ty);
+            }else{
+//                qDebug() << "s " << tx << ' ' << ty << ' ' << cx << ' ' << cy << ' ' << ax << ' ' << ay
+//                            << ' ' << sideval(tx,ty,cx,cy,ax,ay);
+//                qDebug() << "P " << cx << ' ' << cy << ' ' << ax << ' ' << ay << ' ' << tx << ' ' << ty;
+//                qDebug() << "Q " << cx << ' ' << cy << ' ' << bx << ' ' << by << ' ' << tx << ' ' << ty;
+                Q = new poly(cx, cy, bx, by, tx, ty);
+                P = new poly(cx, cy, ax, ay, tx, ty);
+            }
         } else
         if(lac > lab && lac > lbc){
             tx = (ax+cx)/2; ty = (ay+cy)/2;
-            P = new poly(bx, by, ax, ay, tx, ty);
-            Q = new poly(bx, by, cx, cy, tx, ty);
-           // qDebug() << "lac";
+            if( sideval(tx,ty,bx,by,ax,ay)<0 )//Точка A находится слева от вектора TB?
+            {
+                Q = new poly(bx, by, ax, ay, tx, ty);
+                P = new poly(bx, by, cx, cy, tx, ty);
+            }else{
+                Q = new poly(bx, by, cx, cy, tx, ty);
+                P = new poly(bx, by, ax, ay, tx, ty);
+            }
         } else
         if(lbc > lab && lbc > lac){
             tx = (cx+bx)/2; ty = (cy+by)/2;
-            P = new poly(ax, ay, bx, by, tx, ty);
-            Q = new poly(ax, ay, cx, cy, tx, ty);
-            //qDebug() << "lbc";
+            if( sideval(tx,ty,ax,ay,bx,by)<0 )//Точка B находится слева от вектора TA?
+            {
+                Q = new poly(ax, ay, bx, by, tx, ty);
+                P = new poly(ax, ay, cx, cy, tx, ty);
+            }else{
+                Q = new poly(ax, ay, cx, cy, tx, ty);
+                P = new poly(ax, ay, bx, by, tx, ty);
+            }
         }
     }
-    if(n) {P->split(n-1); Q->split(n-1);}
+    if(n) {Q->split(n-1); P->split(n-1);}
 }
 
 void poly::split_img(int lim, const QImage &img)
@@ -205,10 +254,10 @@ void poly::split_img(int lim, const QImage &img)
     int minX, minY, maxX, maxY;
     if(is_rectangle)
     {
-        minX = floor(qMin(qMin(P->ax, P->bx), qMin(Q->bx, Q->cx)));
-        minY = floor(qMin(qMin(P->ay, P->by), qMin(Q->by, Q->cy)));
-        maxX =  ceil(qMax(qMax(P->ax, P->bx), qMax(Q->bx, Q->cx)));
-        maxY =  ceil(qMax(qMax(P->ay, P->by), qMax(Q->by, Q->cy)));
+        minX = floor(qMin(qMin(Q->ax, Q->bx), qMin(P->bx, P->cx)));
+        minY = floor(qMin(qMin(Q->ay, Q->by), qMin(P->by, P->cy)));
+        maxX =  ceil(qMax(qMax(Q->ax, Q->bx), qMax(P->bx, P->cx)));
+        maxY =  ceil(qMax(qMax(Q->ay, Q->by), qMax(P->by, P->cy)));
     }
     else
     {
@@ -238,8 +287,8 @@ void poly::split_img(int lim, const QImage &img)
         else if(c != 1)
         {
             split(0);
-            P->split_img(lim, img);
             Q->split_img(lim, img);
+            P->split_img(lim, img);
         }
     }
 }
@@ -252,10 +301,10 @@ poly poly::getLowestPolyOnPix(pix px)
         p = this;
         while(p->is_splitted)
         {
-           if(p->P->has_inside(px))
-               p = p->P;
-           else if(p->Q->has_inside(px))
+           if(p->Q->has_inside(px))
                p = p->Q;
+           else if(p->P->has_inside(px))
+               p = p->P;
            else
            {
                qDebug() << "lost px at " << px.x() << ":" << px.y();
@@ -278,8 +327,8 @@ QVector<poly*> poly::getLowestPolyVec()
         t = s.pop();
         if(t->is_splitted)
         {
-            s.push(t->P);
             s.push(t->Q);
+            s.push(t->P);
         }else v.append(t);
     }
     return v;

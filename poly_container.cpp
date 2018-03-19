@@ -158,6 +158,7 @@ void poly_container::compress()
 {
     if(!poly_compressed)//
     {
+         int e = 0;
         clear_compress();
         poly_compressed = true;
         QVector<bool> tree_struct;
@@ -174,8 +175,14 @@ void poly_container::compress()
             bool qs, ps;
             while(!T.empty() || !Q.empty())
             {
-                if(Q.empty()) Q.swap(T);
+                if(Q.empty()){
+                    Q.swap(T);
 
+                    QString t;
+                    while(e < tree_struct.size())
+                          t+=QString::number(tree_struct[e++]);
+                    if(t.length() < 64) qDebug() << t;
+                }
                 tpoly = Q.dequeue();
                 tree_struct.append( qs = tpoly->Q->is_splitted );
                 tree_struct.append( ps = tpoly->P->is_splitted );
@@ -183,6 +190,10 @@ void poly_container::compress()
                 if(ps) T.enqueue(tpoly->P); else tree_data.append(tpoly->P->gray);
             }       
         }
+        QString t;
+        while(e < tree_struct.size())
+              t+=QString::number(tree_struct[e++]);
+        if(t.length() < 64) qDebug() << t;
         for(int i = 0; i < tree_struct.size(); i+=8 )
         {
             uchar t = 0;
