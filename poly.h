@@ -38,7 +38,7 @@ public:
     //coords setter
     void set(double _ax, double _ay, double _bx, double _by, double _cx, double _cy);
 
-    void print(QImage &img, bool fill=false, int n=-1, bool abc = false);
+    void print(QImage &img, bool fill=false, int n=-1, bool abc = false, double s_lim = 0);
 
     bool has_inside(pix p);
 
@@ -48,6 +48,7 @@ public:
     poly getLowestPolyOnPix(pix px);
     QVector<poly*> getLowestPolyVec();
     void split(int n);
+    double S();
 };
 
 

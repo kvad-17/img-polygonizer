@@ -41,8 +41,9 @@ MainWindow::~MainWindow()
 
 void MainWindow::refresh_work_poly(poly_container* new_pc_work)
 {
+    //qDebug() << "ST " << ui->lineEdit_s_limit->text().toDouble();
     QImage i = ui->checkBox_gridonly->checkState()?
-                new_pc_work->grid_img():new_pc_work->gray_img();
+                new_pc_work->grid_img(ui->lineEdit_s_limit->text().toDouble()):new_pc_work->gray_img(ui->lineEdit_s_limit->text().toDouble());
     pc_work = new_pc_work;
     ui->labelxy_img_work->setPixmap(QPixmap::fromImage(i));
     pc_work->compress();
@@ -141,8 +142,8 @@ void MainWindow::on_pushButton_polySplit_clicked()
     {
         ui->progressBar->setValue(depth);   QApplication::processEvents();
         pcvec[depth].construct_image(img, depth);  QApplication::processEvents();
-        pcvec[depth].render_grid(); QApplication::processEvents();
-        pcvec[depth].render_gray(); QApplication::processEvents();
+        pcvec[depth].render_grid(ui->lineEdit_s_limit->text().toDouble()); QApplication::processEvents();
+        pcvec[depth].render_gray(ui->lineEdit_s_limit->text().toDouble()); QApplication::processEvents();
     }
 
     ui->horizontalSlider->setValue(128);

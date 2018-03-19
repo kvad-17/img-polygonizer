@@ -37,16 +37,16 @@ public:
 
     void compress();
     void decompress();
-    void render_grid();
-    void render_gray();
+    void render_grid(double s_lim = 0);
+    void render_gray(double s_lim = 0);
     void save_compress(QString filename);
     void load_compress(QString filename);
     static void save_compress_multi(QString filename, QVector<poly_container> &pv);
     static QVector<poly_container> load_compress_multi(QString filename, QProgressBar *pbar=nullptr);
     
     poly get_poly();
-    QImage& grid_img();
-    QImage& gray_img();
+    QImage& grid_img(double s_lim = 0);
+    QImage& gray_img(double s_lim = 0);
     QByteArray& get_compressed_data();
     void print_compressed_data();
 

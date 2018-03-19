@@ -104,36 +104,45 @@ poly::poly(double _ax, double _ay,
     P = new poly(_bx, _by, _cx, _cy, _dx, _dy); //BCD
 }
 
-void poly::print(QImage &img, bool fill, int n, bool abc)
+double poly::S()
 {
-    QPainter painter(&img);
-    if(fill)
+    return abs((ax*(by-cy)+bx*(cy-ay)+cx*(ay-by))*0.5);
+}
+
+void poly::print(QImage &img, bool fill, int n, bool abc, double s_lim)
+{
+   // qDebug() << "EEE " << s_lim << ' ' << S();
+    if(s_lim == 0 || S()<s_lim)
     {
-        painter.setBrush(QBrush(QColor(gray,gray,gray)));
-        painter.setPen(Qt::NoPen);
-    }
-    if(is_rectangle || !is_splitted)
-    if(is_rectangle)        //  AB
-    {                       //  CD
-        QPolygon p;
-        p << QPoint(Q->ax,Q->ay) << QPoint(Q->bx,Q->by) << QPoint(P->cx,P->cy) << QPoint(P->bx,P->by);
-        painter.drawPolygon(p);
-    }
-    else
-    {
-        QPolygon p;
-        p << QPoint(ax,ay) << QPoint(bx,by) << QPoint(cx,cy);
-        painter.drawPolygon(p);
-        if(abc && 0)
+        QPainter painter(&img);
+        if(fill)
         {
-            painter.setPen(Qt::SolidLine);
-            painter.drawText(QPoint(ax,ay), "A");
-            painter.drawText(QPoint(bx,by), "B");
-            painter.drawText(QPoint(cx,cy), "C");
+            painter.setBrush(QBrush(QColor(gray,gray,gray)));
+            painter.setPen(Qt::NoPen);
         }
+        if(is_rectangle || !is_splitted)
+        if(is_rectangle)        //  AB
+        {                       //  CD
+            QPolygon p;
+            p << QPoint(Q->ax,Q->ay) << QPoint(Q->bx,Q->by) << QPoint(P->cx,P->cy) << QPoint(P->bx,P->by);
+            painter.drawPolygon(p);
+        }
+        else
+        {
+            QPolygon p;
+            p << QPoint(ax,ay) << QPoint(bx,by) << QPoint(cx,cy);
+            painter.drawPolygon(p);
+            if(abc && 0)
+            {
+                painter.setPen(Qt::SolidLine);
+                painter.drawText(QPoint(ax,ay), "A");
+                painter.drawText(QPoint(bx,by), "B");
+                painter.drawText(QPoint(cx,cy), "C");
+            }
+        }
+        painter.end();
     }
-    painter.end();
-    if(n && is_splitted) {Q->print(img, fill, n-1); P->print(img, fill, n-1);}
+    if(n && is_splitted) {Q->print(img, fill, n-1, abc, s_lim); P->print(img, fill, n-1, abc, s_lim);}
 }
 
 #define mgx 0.46756456

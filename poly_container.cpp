@@ -274,34 +274,34 @@ poly poly_container::get_poly()
 {
     return P;
 }
-QImage& poly_container::grid_img()
+QImage& poly_container::grid_img(double s_lim)
 {
-    if(!grid_rendered) render_grid();
+    if(!grid_rendered) render_grid(s_lim);
     return grid;
 }
-QImage& poly_container::gray_img()
+QImage& poly_container::gray_img(double s_lim)
 {
-    if(!gray_rendered) render_gray();
+    if(!gray_rendered) render_gray(s_lim);
     return gray;
 }
 
-void poly_container::render_grid()
+void poly_container::render_grid(double s_lim)
 {
     if(!grid_rendered)
     {
         grid = QImage(257,257,QImage::Format_Grayscale8);
         grid.fill(QColor("white"));
-        P.print(grid);
+        P.print(grid, false, -1, false, s_lim);
         grid_rendered = true;
     }
 }
-void poly_container::render_gray()
+void poly_container::render_gray(double s_lim)
 {
     if(!gray_rendered)
     {
         gray = QImage(256,256,QImage::Format_Grayscale8);
         gray.fill(QColor("white"));
-        P.print(gray, true);
+        P.print(gray, true, -1, false, s_lim);
         gray_rendered = true;
     }
 }
